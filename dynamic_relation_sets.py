@@ -1,5 +1,7 @@
 import numpy as np
 
+# yes this data entry is impossible to read, I apologize in advance.
+# Easy enough to convert to read from csv or something if you want tho
 se = 100
 al = 15
 fl = 10
@@ -9,7 +11,7 @@ ho = -15
 en = -30
 
 # 1 for checking stable foelists, 0 for checking stable alliances (+10 vs +8)
-calc_foelist = 0
+calc_foelist = 1
 
 # # to watch how the algo steps thru a specific target list
 # unique_check = np.array([1,1,1,1,0,1,1,0,0,1,1,1,1,1,1])
@@ -90,6 +92,7 @@ set_extreme_low  = [200,[]]
 
 
 def opinion_from_missions(mission_list):
+    # Given a list of how much notoriety is given to each faction, return net result notoriety with all factions
     opinion_list = []
     for pos, missions in enumerate(mission_list):
         # print(mission_list)
@@ -107,6 +110,7 @@ def check_possible_stable(target_relations):
     mission_list = target_relations.copy()
     mission_ignores = np.ones(len(faction_list)) - target_relations
 
+    # ~10,000 steps necessary for no timeouts on all sets, 800 good enough that timeouts are for ones that'll end up impossible anyway.
     for _ in range(800):
         # zero out the factions we don't care about
         faction_opinions = opinion_from_missions(mission_list) * target_relations
@@ -114,11 +118,12 @@ def check_possible_stable(target_relations):
         if np.array_equal(unique_check, target_relations):
             print(faction_opinions)
 
-        # also check if lowest is -2x choice, and already assigned 10 missions; prevents loop w/ no Duke's, but yes NMMC
+        # check if lowest is -2x choice, and already assigned 10 missions; prevents loop w/ no Duke's, but yes NMMC or similar
         if (faction_opinions - mission_ignores < 0).all() or (np.min(faction_opinions) < -2*se and np.max(mission_list) > 10) :
             # print(f'{target_relations} is impossible')
             return -1
         elif (faction_opinions + mission_ignores > 0).all():
+            # take a note if most or least efficient just for interest
             notoriety_ratio = 100 * np.sum(faction_opinions) / np.sum(se * mission_list)
             if notoriety_ratio > set_extreme_high[0]:
                 set_extreme_high[0] = notoriety_ratio
@@ -139,13 +144,15 @@ def check_possible_stable(target_relations):
     return -1
 
 def check_if_subset(current_target_list, successful_target_lists):
+    # inefficient cycling through successful lists to make sure we're not calculating something that has fewer allies
+    # than a set we already know works; e.g. don't check if "A, C" as allies works if we already know "A, B, C" works
     for target_list in successful_target_lists:
         if -1 not in target_list[0] - current_target_list:
             return True
     return False
 
-# Check faction of listed proposed allies, if a rival faction is in listed proposed allies
 def check_if_internal_conflict(proposed_ally_list):
+    # Check faction of listed proposed allies, if a rival faction is in listed proposed allies
     for faction_num, opinion_list in enumerate(opinion_array):
         if proposed_ally_list[faction_num] == 1:
             for relation_num, opinion in enumerate(opinion_list):
@@ -181,6 +188,7 @@ for checknum, selected_foe_numeric in enumerate(reversed(range(2**len(faction_li
             pass_set_list.append([selected_foes])
 
 if calc_foelist:
+    # printing out a list of all stable foes and the efficiencies for each set
     print(f'BEGINNING READOUT OF FOELIST FROM {len(pass_set_list)} SETS:')
     for num, passes in enumerate(pass_set_list):
         drops = np.ones(len(faction_list)) - passes[0]
@@ -204,6 +212,7 @@ if calc_foelist:
     print(f'Least effective set is {set_extreme_low[0]:.1f}%:')
     print(set_extreme_low[1])
 else:
+    # printing out a list of all valid alliances
     print('Beginning readout of valid alliances:')
     # print(pass_set_list)
     for num, passes in enumerate(pass_set_list):
